@@ -5,8 +5,9 @@
 #Extends "Libs/Nadeo/TMNext/TrackMania/Modes/TMNextBase.Script.txt"
 
 #Const CompatibleMapTypes "TrackMania\\TM_Race"
-#Const Version "2023-07-05"
+#Const Version "2023-07-06"
 #Const ScriptName "Modes/TrackMania/ZombieTag.Script.txt"
+#Const Author "Oafiiish"
 #Const C_ModeName "Zombie Tag"
 #Const Description "A singular tagger is chosen from the present players, if tagged, a player joins the tagging team."
 
@@ -24,28 +25,48 @@
 // Settings
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ //
 
+
+// Gamemode Settings
+#Setting S_TimeLimit 300 as _("Time limit")
+#Setting S_RoundsPerMap 7
+#Setting S_MapsPerMatch 5
+#Setting S_Collision True
+
+#Setting S_RespawnSpeedLimitKmh 0
+#Setting S_RoundEndTime 10000
+
+#Setting S_TaggerAssign True
+#Setting S_TaggerAssignDelay 10000
+
+#Setting S_TaggingRespawns False
+#Setting S_TaggedSpawnDelay 3000
+
 // Collision Settings
 #Setting S_TrustClientSimu False
 #Setting S_UseCrudeExtrapolation False
 
-// Gamemode Settings
-#Setting S_TaggerAssignDelay 10000
-#Setting S_TaggedSpawnDelay 3000
-#Setting S_RoundEndTime 10000
-#Setting S_TaggerAssign True
-#Setting S_Collision True
-#Setting S_RespawnSpeedLimitKmh 0
+// Debugging
+#Setting S_DisableWinConditions False
+#Setting S_FakeUsersNb 0
 
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ //
 // Constants
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ //
 
+// User
+#Const C_HudModulePath ""
+
 // Backend
-#Const C_TaggerClan 2
-#Const C_HiderClan 1
+#Const C_Layer_Timer "Layer-Timer"
 #Const C_Layer_PlayerMarkers "Layer-Player-Marker"
 #Const C_Prefix_PlayerMarkers "Player-Marker-"
+
+// Customize
+#Const C_TaggerClan 2
+#Const C_TaggerColor <1., 0.6, 0.6>
+#Const C_HiderClan 1
+#Const C_HiderColor <0.6, 0.6, 1.>
 
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ //
@@ -72,14 +93,80 @@ declare Ident[] G_PlayerMarkerIds;
 ***Match_LogVersions***
 ***
 Log::RegisterScript(ScriptName, Version);
+Log::RegisterScript(Hitbox::ScriptName, Hitbox::Version);
+***
+
+
+***Match_LoadLibraries***
+***
+yield;
+***
+
+
+***Match_UnloadLibraries***
+***
+yield;
+***
+
+
+***Match_Settings***
+***
+MB_Settings_UseDefaultHud = (C_HudModulePath == "");
+MB_Settings_UseDefaultTimer = True;
 ***
 
 
 ***Match_Rules***
 ***
 ModeInfo::SetName(C_ModeName);
+ModeInfo::SetType(ModeInfo::C_Type_FreeForAll);
 ModeInfo::SetRules(Description);
 ModeInfo::SetStatusMessage(Description);	
+***
+
+
+***Match_LoadHud***
+***
+if (C_HudModulePath != "") Hud_Load(C_HudModulePath);
+***
+
+
+***Match_AfterLoadHud***
+***
+// General
+UIManager.HoldLoadingScreen = False;
+UIManager.UIAll.UISequence = CUIConfig::EUISequence::Playing;
+UIManager.UIAll.DisableZoomTransitions = False;
+UIManager.UIAll.OverlayHideNotices = True;
+UIManager.UIAll.OverlayHideMapInfo = True;
+UIManager.UIAll.OverlayHideOpponentsInfo = True; // ?
+UIManager.UIAll.OverlayHideChat = False;
+UIManager.UIAll.OverlayHideCheckPointList = True;
+UIManager.UIAll.OverlayHideRoundScores = True;
+UIManager.UIAll.OverlayHideCountdown = True;
+UIManager.UIAll.OverlayHideCrosshair = True;
+UIManager.UIAll.OverlayHideGauges = True;
+UIManager.UIAll.OverlayHideConsumables = True;
+UIManager.UIAll.OverlayHide321Go = True;
+UIManager.UIAll.OverlayMute321Go = False;
+UIManager.UIAll.OverlayHideBackground = True; // ?
+UIManager.UIAll.OverlayHideChrono = True;
+UIManager.UIAll.OverlayHideSpeedAndDist = True;
+UIManager.UIAll.OverlayHidePersonnalBestAndRank = True;
+UIManager.UIAll.OverlayHidePosition = True;
+UIManager.UIAll.OverlayHideCheckPointTime = True;
+UIManager.UIAll.OverlayHideEndMapLadderRecap = True;
+UIManager.UIAll.OverlayHideMultilapInfos = True;
+UIManager.UIAll.OverlayHideSpectatorControllers = True;
+UIManager.UIAll.OverlayHideSpectatorInfos = True;
+UIManager.UIAll.OverlayChatHideAvatar = True;
+UIManager.UIAll.ScoreTableOnlyManialink = True;
+// Only allow gamemode markers
+UIManager.UIAll.TeamLabelsShowNames = CUIConfig::EVisibility::ForcedHidden ;
+UIManager.UIAll.TeamLabelsVisibility = CUIConfig::ELabelsVisibility::Never;
+UIManager.UIAll.OpposingTeamLabelsShowNames = CUIConfig::EVisibility::ForcedHidden ;
+UIManager.UIAll.OpposingTeamLabelsVisibility = CUIConfig::ELabelsVisibility::Never;
+UIManager.UIAll.LabelsVisibility = CUIConfig::EHudVisibility::Everything;
 ***
 
 
@@ -90,6 +177,7 @@ UsePvPCollisions = S_Collision;
 UsePvECollisions = True;
 
 // Use teams
+Clans::SetClansNb(2);
 UseMultiClans = True;
 UseForcedClans = True;
 UseClans = True;
@@ -101,22 +189,29 @@ SpawnDelayDuration = 0;
 RespawnBehaviour = CSmMode::ERespawnBehaviour::DoNothing;
 GiveUpBehaviour = CSmMode::EGiveUpBehaviour::DoNothing;
 CheckpointBehaviour = CSmMode::ECheckpointBehaviour::Custom;
+***
 
-// UI
-UIManager.UIAll.TeamLabelsShowNames = CUIConfig::EVisibility::ForcedVisible;
-UIManager.UIAll.TeamLabelsVisibility = CUIConfig::ELabelsVisibility::WhenInFrustum;
-UIManager.UIAll.OpposingTeamLabelsShowNames = CUIConfig::EVisibility::ForcedVisible;
-UIManager.UIAll.OpposingTeamLabelsVisibility = CUIConfig::ELabelsVisibility::WhenVisible;
-UIManager.UIAll.LabelsVisibility = CUIConfig::EHudVisibility::Everything;
+
+***Match_InitMatch***
+***
+declare Integer MapsLeft = S_MapsPerMatch;
+***
+
+
+***Match_InitMap***
+***
+declare Integer RoundsLeft = S_RoundsPerMap;
+***
+
+
+***Match_StartMap***
+***
+Users_SetNbFakeUsers(S_FakeUsersNb, 0);
 ***
 
 
 ***Match_StartRound***
 ***
-// UI
-UIManager.UIAll.UISequence = CUIConfig::EUISequence::Playing;
-UIManager.HoldLoadingScreen = False;
-
 // Find first spawn
 foreach (Landmark in MapLandmarks) {
 	if (Landmark.PlayerSpawn != Null) {
@@ -130,11 +225,17 @@ foreach (Player in Players) {
 	InitializePlayer(Player, C_HiderClan);
 }
 
-// Start Tagger Assignment Timer
-G_TaggerAssignTimer.Assigned = False;
-G_TaggerAssignTimer.SpawnTime = Now + S_TaggerAssignDelay + 3000;
+// Start timer
+StartTime = ((Now + Race::C_SpawnDuration) / 100 * 100) + 100;
+if (S_TimeLimit > 0) EndTime = StartTime + 1000 * S_TimeLimit;
+else EndTime = -1;
+UIManager.UIAll.CountdownEndTime = EndTime;
 
-// Begin Message
+// Start tagger assignment timer
+G_TaggerAssignTimer.Assigned = False;
+G_TaggerAssignTimer.SpawnTime = Now + S_TaggerAssignDelay + Race::C_SpawnDuration;
+
+// Begin message
 declare Text NotificationText;
 NotificationText = TL::Compose("Round starting! $<%1$> seconds to run.", TL::ToText((S_TaggerAssignDelay) / 1000));
 SendGlobalMessage(3000, NotificationText);
@@ -155,7 +256,7 @@ if (!G_TaggerAssignTimer.Assigned && (G_TaggerAssignTimer.SpawnTime < Now)) {
 foreach (Event in PendingEvents) {
 	switch (Event.Type) {
 		case CSmModeEvent::EType::OnPlayerRequestRespawn: OnPlayerRequestRespawn(Event.Player);
-		case CSmModeEvent::EType::OnPlayerAdded: OnPlayerAdded(Event.Player);  // TODO: Test this
+		case CSmModeEvent::EType::OnPlayerAdded: OnPlayerAdded(Event.Player);
 	}
 }
 
@@ -175,7 +276,7 @@ foreach (Player in Players) {
 // Detect collisions
 foreach (Player in Players) {
 	// Only for taggers
-	if (Player.CurrentClan != C_TaggerClan) continue;
+	if (GetNetClan(Player) != C_TaggerClan) continue;
 	
 	// Get opponent collisions
 	declare CSmPlayer CollidingOpponent = GetFirstCollidingPlayerOpponent(Player);
@@ -186,23 +287,61 @@ foreach (Player in Players) {
 	TagPlayer(CollidingOpponent, Player);
 }
 
+// UI Timer
+Layers::Detach(C_Layer_Timer);
+Layers::Create(C_Layer_Timer, TimerXML());
+Layers::SetType(C_Layer_Timer, CUILayer::EUILayerType::Normal);
+Layers::Attach(C_Layer_Timer);
+Layers::Show(C_Layer_Timer);
+
 // UI Markers for other players
-// Could maybe reduce overhead?
 RefreshPlayerMarkers();
 Layers::Detach(C_Layer_PlayerMarkers);
 Layers::Create(C_Layer_PlayerMarkers, PlayerMarkersXML());
 Layers::SetType(C_Layer_PlayerMarkers, CUILayer::EUILayerType::Markers);
 Layers::Attach(C_Layer_PlayerMarkers);
 Layers::Show(C_Layer_PlayerMarkers);
+// Change dossard color
+for (Player in Players) {
+	if (GetNetClan(Player) == C_TaggerClan) Player.Dossard_Color = C_TaggerColor;
+	else if (GetNetClan(Player) == C_HiderClan) Player.Dossard_Color = C_HiderColor;
+}
 
-// Count remaining players and end round
-if (CountClans().NumHiders == 0) {
-	SendGlobalMessage(3000, "All hiders have been found.");
-	MB_Sleep(S_RoundEndTime / 2);
-	for (Player in Players) UnspawnPlayer(Player);
+// End round on final tag
+if (CountClans().NumHiders == 0 && !S_DisableWinConditions) {
+	SendGlobalMessage(3000, "All hiders have been found.  $FAATaggers$g win!");
 	MB_Sleep(S_RoundEndTime / 2);
 	MB_StopRound();
 }
+
+// End round on time
+if (EndTime > 0 && Now > EndTime && !S_DisableWinConditions) {
+	SendGlobalMessage(3000, "Time has run out.  $AAFHiders$g win!");
+	MB_Sleep(S_RoundEndTime / 2);
+	MB_StopRound();
+}
+***
+
+***Match_EndRound***
+***
+Layers::DetachAll();
+for (Player in Players) UnspawnPlayer(Player);
+MB_Sleep(S_RoundEndTime / 2);
+RoundsLeft -= 1;
+if (RoundsLeft <= 0) MB_StopMap();
+***
+
+
+***Match_EndMap***
+***
+MapsLeft -= 1;
+if (MapsLeft <= 0) MB_StopMatch();
+***
+
+
+***Match_EndMatch***
+***
+yield;
 ***
 
 
@@ -210,22 +349,73 @@ if (CountClans().NumHiders == 0) {
 // TODO
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ //
 
-// Try assigning the vec3 to the constent before #including hitbox to overwrite ellipse
-// Add time limit
 // More enclosed maps that cycle
-// Change player team without respawn (could use Player.RequestedClan)
 // Add OOB waypoints to maps
+// Tune hitbox more
+
+// LOW PRIORITY
+// Add scores
+// Add pause menu
+// Add commands
+// Optimize UI performance
 
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ //
 // Functions
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ //
 
+Integer GetNetSpawnTime(CSmPlayer _Player) {
+	declare netwrite Integer Net_SpawnTime for _Player;
+	return Net_SpawnTime;
+}
+
+Void SetNetSpawnTime(CSmPlayer _Player, Integer _SpawnTime) {
+	declare netwrite Integer Net_SpawnTime for _Player;
+	Net_SpawnTime = _SpawnTime;
+}
+
+Integer GetNetClan(CSmPlayer _Player) {
+	declare netwrite Integer Net_CurrentClan for _Player;
+	return Net_CurrentClan;
+}
+
+Void SetNetClan(CSmPlayer _Player, Integer _ClanNum) {
+	declare netwrite Integer Net_CurrentClan for _Player;
+	Net_CurrentClan = _ClanNum;
+}
+
+Text TimerXML() {
+	return """
+	<?xml version="1.0" encoding="utf-8" standalone="yes" ?>
+	<manialink version="3" name="Speedtraps:RunSpeedLayer">
+		<frame id="timer-frame" hidden="0">
+			<label id="timer" pos="0 -80" italicslope=0 style="TextButtonMedium" textsize="16" textcolor="FFF" valign="center" halign="center" size="30 20" textemboss="1"/>
+		</frame>
+		<script><!--
+		
+		#Include "TextLib" as TL
+		
+		declare CMlFrame FrameElement = Page.GetFirstChild("timer-frame") as CMlFrame;
+		declare CMlLabel TimerElement = FrameElement.GetFirstChild("timer") as CMlLabel;
+		
+		declare Integer TimeRemaining = {{{ EndTime }}} - {{{ Now }}};
+		TimerElement.Value = TL::TimeToText(TimeRemaining);
+		if (TimeRemaining < 60000) {
+			declare Real InverseMinute = .9 * (TimeRemaining / 60000.) + .1;
+			TimerElement.TextColor = <1., InverseMinute, InverseMinute>;
+		}
+		
+		--></script>
+	</manialink>
+	""";
+}
+
 Text PlayerMarkersXML() {
 	// Make frames
 	declare Text MarkerFramesXML;
 	for (Player in Players) {
-		MarkerFramesXML ^= """<frameinstance modelid="icon" id="{{{ C_Prefix_PlayerMarkers ^ Player.User.Login }}}"/>""";
+		// Netwrite cannot be accessed in script
+		MarkerFramesXML ^= """<frameinstance modelid="icon" class="{{{ GetNetClan(Player) }}}" id="{{{ C_Prefix_PlayerMarkers ^ Player.User.Login }}}"/>""";
 	}
 	
 	// Full text
@@ -233,8 +423,10 @@ Text PlayerMarkersXML() {
 	<?xml version="1.0" encoding="utf-8" standalone="yes" ?>
 	<manialink version="3" name="Markers">
 		<framemodel id="icon" hidden="1">
-			<quad id="arrow" pos="0 1" size="6 6" z-index="2" halign="center" valign="center" style="UICommon64_2" substyle="ArrowDownSlim_light"/>
-			<label id="distance" pos="0 -2" z-index="1" size="10 5" halign="center" valign="center2" textfont="GameFontSemiBold" textsize="0.4" textemboss="1"/>
+			<label id="name" pos="0 5" size="30 10" halign="center" valign="center" textfont="GameFontSemiBold" textsize="2" textemboss="1"/>
+			<quad id="arrow" pos="0 0" size="8 8" z-index="2" halign="center" valign="center" style="UICommon64_2" substyle="ArrowDownSlim_light"/>
+			<quad id="arrow-shadow" pos=".1 -.1" size="8 8" z-index="1" halign="center" valign="center" style="UICommon64_2" substyle="ArrowDownSlim_light" colorize="000"/>
+			<label id="distance" pos="0 -4" size="10 5" halign="center" valign="center" textfont="GameFontSemiBold" textsize="2" textemboss="1"/>
 			</framemodel>
 		<frame z-index="1">
 			{{{ MarkerFramesXML }}}
@@ -242,41 +434,68 @@ Text PlayerMarkersXML() {
 		
 		<script><!--
 		
+		#Include "TextLib" as TL
 		#Include "MathLib" as ML
 		
 		for (Player in Players) {
 			// Find elements
+			if (Page == Null) break;
 			declare CMlFrame FrameElement = Page.GetFirstChild("{{{ C_Prefix_PlayerMarkers }}}" ^ Player.User.Login) as CMlFrame;
+			declare CMlLabel NameElement = FrameElement.GetFirstChild("name") as CMlLabel;
 			declare CMlQuad ArrowElement = FrameElement.GetFirstChild("arrow") as CMlQuad;
+			declare CMlQuad ArrowShadowElement = FrameElement.GetFirstChild("arrow-shadow") as CMlQuad;  // Fake emboss
 			declare CMlLabel DistanceElement = FrameElement.GetFirstChild("distance") as CMlLabel;
 			
-			// Hide if no GUIPlayer
+			// Skip if no GUIPlayer
 			if (GUIPlayer == Null) {
+				NameElement.Opacity = 0.;
 				ArrowElement.Opacity = 0.;
+				ArrowShadowElement.Opacity = 0.;
 				DistanceElement.Opacity = 0.;
 				continue;
 			}
 			
-			// Determine coloring
-			if (Player.CurrentClan == {{{ C_TaggerClan }}}) {
-				ArrowElement.Colorize = <1., 0.6, 0.6>;
-				DistanceElement.TextColor = <1., 0.6, 0.6>;
-			}
-			else {
-				ArrowElement.Colorize = <0.6, 0.6, 1.>;
-				DistanceElement.TextColor = <0.6, 0.6, 1.>;
+			// Get clan
+			declare Integer Net_CurrentClan;
+			for (I, 1, {{{ Clans::GetClansNb() }}}) {
+				if (FrameElement.HasClass(TL::ToText(I))) {
+					Net_CurrentClan = I;
+					continue;
+				}
 			}
 			
-			// Input distance
+			// Determine coloring
+			declare Vec3 ClanColor;
+			if (Net_CurrentClan == {{{ C_TaggerClan }}}) ClanColor = {{{ C_TaggerColor }}};
+			else if (Net_CurrentClan == {{{ C_HiderClan }}}) ClanColor = {{{ C_HiderColor }}};
+			ArrowElement.Colorize = ClanColor;
+			DistanceElement.TextColor = ClanColor;
+			NameElement.TextColor = ClanColor;
+			
+			// Print name
+			NameElement.Value = Player.User.Name;
+			
+			// Print distance
 			declare Vec3 Distance;
 			Distance = Player.Position - GUIPlayer.Position;
-			DistanceElement.Value = ML::NearestInteger(ML::Distance(<0., 0., 0.>, Distance)) ^ "m";
+			declare Real ScalarDistance = ML::Distance(<0., 0., 0.>, Distance);
+			DistanceElement.Value = ML::NearestInteger(ScalarDistance) ^ "m";
+			
+			// Scale marker based on distance
+			declare Real Scale = (1. / ML::Exp(ML::Max(ScalarDistance, 0.01) / 200.));  // 0. errors bc fp precision
+			Scale = ML::Max(Scale, .5);
+			FrameElement.RelativeScale = Scale;
+			FrameElement.Parent.RelativePosition_V3 = <0., 6. * Scale>;
 			
 			// Hide if GUIPlayer
 			if (Player == GUIPlayer) {
-				ArrowElement.Substyle = "ArrowUpSlim_light";
-				ArrowElement.Opacity = 0.75;
+				NameElement.Opacity = 0.;
+				ArrowElement.Opacity = 0.;
+				ArrowShadowElement.Opacity = 0.;
 				DistanceElement.Opacity = 0.;
+				
+				ArrowElement.Substyle = "ArrowUpSlim_light";
+				ArrowShadowElement.Substyle = "ArrowUpSlim_light";
 			}
 		}
 		
@@ -302,9 +521,11 @@ Void RefreshPlayerMarkers() {
 	}
 }
 
-Void InitializePlayer(CSmPlayer _Player, Integer ClanNum) {
-	declare netwrite Integer Net_SpawnTime for _Player = -1;
-	SetPlayerClan(_Player, ClanNum);
+Void InitializePlayer(CSmPlayer _Player, Integer _ClanNum) {
+	Race::Start(_Player);
+	SetNetSpawnTime(_Player, -1);
+	SetNetClan(_Player, _ClanNum);
+	SetPlayerClan(_Player, _ClanNum);
 }
 
 Void OnPlayerAdded(CSmPlayer _Player) {
@@ -316,8 +537,7 @@ Boolean PlayerIsSpawned(CSmPlayer _Player) {
 }
 
 Boolean PlayerIsSpawnable(CSmPlayer _Player) {
-	declare netwrite Integer Net_SpawnTime for _Player;
-	return !PlayerIsSpawned(_Player) && (Now > Net_SpawnTime);
+	return !PlayerIsSpawned(_Player) && (Now > GetNetSpawnTime(_Player));
 }
 
 Boolean PlayerIsDead(CSmPlayer _Player) {
@@ -328,8 +548,8 @@ ClanCount CountClans() {
 	declare Integer NumTaggers = 0;
 	declare Integer NumHiders = 0;
 	foreach (Player in Players) {
-		if (Player.CurrentClan == C_TaggerClan) NumTaggers += 1;
-		else if (Player.CurrentClan == C_HiderClan) NumHiders += 1;
+		if (GetNetClan(Player) == C_TaggerClan) NumTaggers += 1;
+		else if (GetNetClan(Player) == C_HiderClan) NumHiders += 1;
 	}
 	return ClanCount{NumTaggers=NumTaggers, NumHiders=NumHiders};
 }
@@ -346,15 +566,18 @@ Void SendGlobalMessage(Integer _Duration, Text _Message) {
 
 Void RespawnPlayer(CSmPlayer _Player) {
 	if (_Player.SpawnStatus == CSmPlayer::ESpawnStatus::Spawned) UnspawnPlayer(_Player);
-	SpawnPlayer(_Player, _Player.CurrentClan, 100, G_Spawn, Now);
+	SpawnPlayer(_Player, GetNetClan(_Player), 100, G_Spawn, Now);
 }
 
 Void TagPlayer(CSmPlayer _Player, CSmPlayer _TaggerPlayer) {
-	// Tag and despawn a player
-	UnspawnPlayer(_Player);
-	SetPlayerClan(_Player, C_TaggerClan);
-	declare netwrite Integer Net_SpawnTime for _Player;
-	Net_SpawnTime = Now + S_TaggedSpawnDelay;
+	// Tag a player
+	SetNetClan(_Player, C_TaggerClan);
+	
+	// Kill if necessary
+	if (S_TaggingRespawns) {
+		UnspawnPlayer(_Player);
+		SetNetSpawnTime(_Player, Now + S_TaggedSpawnDelay);
+	}
 	
 	// Print Notification
 	declare Text NotificationText;
@@ -377,7 +600,7 @@ Void TagPlayer(CSmPlayer _Player, CSmPlayer _TaggerPlayer) {
 Void TagPlayer(CSmPlayer _Player) { TagPlayer(_Player, Null); }
 
 Void OnPlayerDeath(CSmPlayer _Player) {
-	if (_Player.CurrentClan == C_HiderClan && G_TaggerAssignTimer.SpawnTime < Now) TagPlayer(_Player);
+	if (GetNetClan(_Player) == C_HiderClan && (G_TaggerAssignTimer.Assigned || !S_TaggerAssign)) TagPlayer(_Player);
 	RespawnPlayer(_Player);
 }
 
@@ -387,7 +610,7 @@ Void OnPlayerRequestRespawn(CSmPlayer _Player) {
 	if (S_RespawnSpeedLimitKmh > 0 && _Player.Speed > S_RespawnSpeedLimitKmh / 3.6) return;
 	
 	// Respawn behavior
-	if (_Player.CurrentClan == C_HiderClan && (G_TaggerAssignTimer.SpawnTime < Now)) TagPlayer(_Player);
+	if (GetNetClan(_Player) == C_HiderClan && (G_TaggerAssignTimer.Assigned || !S_TaggerAssign)) TagPlayer(_Player);
 	RespawnPlayer(_Player);
 }
 
@@ -395,10 +618,16 @@ CSmPlayer GetFirstCollidingPlayerOpponent(CSmPlayer _Player) {
 	// Get the first colliding opponent
 	if (_Player.SpawnStatus != CSmPlayer::ESpawnStatus::Spawned) return Null;
 	foreach (Player in Players) {
+		// Same person?
 		if (Player == _Player) continue;
+		// Spawned?
 		if (Player.SpawnStatus != CSmPlayer::ESpawnStatus::Spawned) continue;
+		if (_Player.SpawnStatus != CSmPlayer::ESpawnStatus::Spawned) continue;
+		// Same team
+		if (GetNetClan(Player) == GetNetClan(_Player)) continue;
+		// Colliding?
 		if (!Hitbox::AreColliding(Player, _Player)) continue;
-		if (Player.CurrentClan == _Player.CurrentClan) continue;
+		
 		return Player;
 	}
 	return Null;

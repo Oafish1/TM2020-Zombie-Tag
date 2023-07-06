@@ -1,13 +1,15 @@
 #Const Version					"2021-12-22"
 #Const ScriptName				"Hitbox.Script.txt"
 
+// This is a version of the Hitbox script from Rx where the hitbox is slightly adjusted to work reliably with collisions on
+
 #Include "MathLib" as ML
 
 #Const C_UpOffset 		0.44
 #Const C_FrontOffset	1.3
 #Const C_BackOffset 	0.75
 
-#Const C_CarEllipsoid     	<1.4, .5, 1.1> //xyz "radius"  // CHANGED
+#Const C_CarEllipsoid     	<1.1, .5, 10.> //xyz "radius"  // CHANGED
 #Const C_CarEllipsoidOffset <-0.8, 0.575, -0.8>
 #Const C_FlagEllipsoid			<1.5,3.,1.5>
 
