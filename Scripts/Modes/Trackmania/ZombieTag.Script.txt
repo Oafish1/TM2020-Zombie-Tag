@@ -5,7 +5,7 @@
 #Extends "Modes/Nadeo/Trackmania/Base/TrackmaniaBase.Script.txt"
 
 #Const CompatibleMapTypes "TrackMania\\TM_Race"
-#Const Version "2023-07-06"
+#Const Version "2023-11-29"
 #Const ScriptName "Modes/TrackMania/ZombieTag.Script.txt"
 #Const Author "Oafiiish"
 #Const C_ModeName "Zombie Tag"
