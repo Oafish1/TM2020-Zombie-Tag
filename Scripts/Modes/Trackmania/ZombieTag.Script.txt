@@ -2,7 +2,7 @@
  *	Zombie tag gamemode
  */
 
-#Extends "Libs/Nadeo/TMNext/TrackMania/Modes/TMNextBase.Script.txt"
+#Extends "Modes/Nadeo/Trackmania/Base/TrackmaniaBase.Script.txt"
 
 #Const CompatibleMapTypes "TrackMania\\TM_Race"
 #Const Version "2023-07-06"
@@ -36,7 +36,7 @@
 #Setting S_RoundEndTime 10000
 
 #Setting S_TaggerAssign True
-#Setting S_TaggerAssignDelay 10000
+#Setting S_TaggerAssignDelay 10000  // Also cannot become tagger in first X ms
 
 #Setting S_TaggingRespawns False
 #Setting S_TaggedSpawnDelay 3000
@@ -232,7 +232,7 @@ else EndTime = -1;
 UIManager.UIAll.CountdownEndTime = EndTime;
 
 // Start tagger assignment timer
-G_TaggerAssignTimer.Assigned = False;
+G_TaggerAssignTimer.Assigned = !S_TaggerAssign;
 G_TaggerAssignTimer.SpawnTime = Now + S_TaggerAssignDelay + Race::C_SpawnDuration;
 
 // Begin message
@@ -349,11 +349,26 @@ yield;
 // TODO
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ //
 
-// More enclosed maps that cycle
+// HIGH PRIORITY
+// Limit clock to 0
+// Spawn while game not work before timer
+// Tagger leaves game protocol
+// Tighter hitbox
+// More enclosed maps that cycle and are recoverable from crashing
+// Add scoreboard, maybe time multiplied by number of taggers divided by hiders?
+// 5-second no-collision buffer
+
+// MID PRIORITY
+// Change round/map counter to count up for better handling with mid-match changes
 // Add OOB waypoints to maps
 // Tune hitbox more
+// Allow checkpoints to be activated multiple times
+// Allow respawns from CPs
+// Allow call vote for map
+// Re-evaluate respawn behavior on death
 
 // LOW PRIORITY
+// Add VS menu top of HUD
 // Add scores
 // Add pause menu
 // Add commands
@@ -600,8 +615,8 @@ Void TagPlayer(CSmPlayer _Player, CSmPlayer _TaggerPlayer) {
 Void TagPlayer(CSmPlayer _Player) { TagPlayer(_Player, Null); }
 
 Void OnPlayerDeath(CSmPlayer _Player) {
-	if (GetNetClan(_Player) == C_HiderClan && (G_TaggerAssignTimer.Assigned || !S_TaggerAssign)) TagPlayer(_Player);
-	RespawnPlayer(_Player);
+	if (GetNetClan(_Player) == C_HiderClan && (G_TaggerAssignTimer.SpawnTime < Now)) TagPlayer(_Player);
+	// RespawnPlayer(_Player);
 }
 
 Void OnPlayerRequestRespawn(CSmPlayer _Player) {
@@ -610,7 +625,7 @@ Void OnPlayerRequestRespawn(CSmPlayer _Player) {
 	if (S_RespawnSpeedLimitKmh > 0 && _Player.Speed > S_RespawnSpeedLimitKmh / 3.6) return;
 	
 	// Respawn behavior
-	if (GetNetClan(_Player) == C_HiderClan && (G_TaggerAssignTimer.Assigned || !S_TaggerAssign)) TagPlayer(_Player);
+	if (GetNetClan(_Player) == C_HiderClan && (G_TaggerAssignTimer.SpawnTime < Now)) TagPlayer(_Player);
 	RespawnPlayer(_Player);
 }
 
